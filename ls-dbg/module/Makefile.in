@@ -1,0 +1,73 @@
+#
+# Copyright (C) 2010-2014 Freescale Semiconductor, Inc.
+# All rights reserved.
+#
+# This software may be distributed under the terms of the
+# GNU General Public License ("GPL") as published by the Free Software
+# Foundation, either version 2 of that License or (at your option) any
+# later version.
+#
+# THIS SOFTWARE IS PROVIDED BY Freescale Semiconductor ``AS IS'' AND ANY
+# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL Freescale Semiconductor BE LIABLE FOR ANY
+# DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+# (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+# LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+# ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+# THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+#
+KSRC=@KSRC@
+ATSRC=@abs_top_srcdir@
+ABDIR=@abs_builddir@
+ASDIR=@abs_srcdir@
+SDIR= @srcdir@
+
+MODULE_NAME = ls-dbg
+
+ifneq ($(KERNELRELEASE),)
+
+obj-m   := $(MODULE_NAME).o
+$(MODULE_NAME)-objs := \
+	ls_dbg.o \
+	reg_access.o \
+	dcsr_etf.o \
+	dcsr_etr.o \
+	dcsr_etm.o \
+	dcsr_cstf.o
+
+EXTRA_CFLAGS += -I$(ATSRC)/ls-common
+
+else
+
+KERNEL_SRC = $(KSRC)
+ARCH = arm
+
+KERNEL_ARGS := M=$(ABDIR) ARCH=$(ARCH) CROSS_COMPILE=$(CROSS_COMPILE)
+INSTALL_ARGS := INSTALL_MOD_PATH=$(SYSROOT)
+
+.PHONY: build install clean
+
+all: build
+
+build:
+	make -C  $(KERNEL_SRC) $(KERNEL_ARGS) modules
+
+install:
+	make -C  $(KERNEL_SRC) $(KERNEL_ARGS) $(INSTALL_ARGS) modules_install
+
+clean:
+	make -C  $(KERNEL_SRC) $(KERNEL_ARGS) clean
+	rm -f modules.order
+
+distclean:
+	rm Makefile
+
+distdir:
+	@echo Nothing to be done for \'dist\'
+
+check:
+	@echo Nothing to be done for \'check\'
+
+endif
