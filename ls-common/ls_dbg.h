@@ -19,19 +19,35 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef DBG_REG_ACCESS_H
-#define DBG_REG_ACCESS_H
+#ifndef LS_DBG_H
+#define LS_DBG_H
 
-#include <linux/kernel.h>
-#include "reg_access_ioctl.h"
+enum TRACEIP_MODULE {
+	ETM0,
+	ETM1,
 
-int reg_access_init(void);
-int reg_add_map(enum TRACEIP_MODULE id, unsigned long addr, unsigned long size);
-void reg_access_cleanup(void);
-__u32 ls_dbg_read_reg_internal(enum TRACEIP_MODULE module_id, __u32 offset,
-									__u64 *out_val);
+	ETR,
 
-__u32 ls_dbg_write_reg_internal(enum TRACEIP_MODULE module_id, __u32 offset,
-									__u64 in_val);
+	ETF0,
+	ETF1,
 
-#endif  /* DBG_REG_ACCESS_H */
+	CSTF0,
+	CSTF1,
+
+	EPU,
+	GDI,
+	CORE,
+	NUM_IO_IDS = EPU + 1,
+	
+	VCOUNT = EPU + 1,
+
+	NUM_IDS = VCOUNT + 1
+};
+
+enum RESOURCE_GROUP_ID {
+	EPU0_COUNTER = 0,
+	EPU0_GROUP,
+	EPU_SCU_EVENT
+};
+
+#endif  /* LS_DBG_H */

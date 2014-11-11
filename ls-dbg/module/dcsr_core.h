@@ -18,20 +18,17 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#ifndef DCSR_CORE_H
+#define DCSR_CORE_H
 
-#ifndef DBG_REG_ACCESS_H
-#define DBG_REG_ACCESS_H
+#include "dbg_private.h"
+#include "dbg_device.h"
+#include "dcsr_core_ls1.h"
 
-#include <linux/kernel.h>
-#include "reg_access_ioctl.h"
+#define DEBUGFS_CORE_NAME "core"
 
-int reg_access_init(void);
-int reg_add_map(enum TRACEIP_MODULE id, unsigned long addr, unsigned long size);
-void reg_access_cleanup(void);
-__u32 ls_dbg_read_reg_internal(enum TRACEIP_MODULE module_id, __u32 offset,
-									__u64 *out_val);
+/* Driver Initialization Functions */
+extern int dcsr_core_ls1_init(struct dentry *parent_dentry,
+				struct dbg_device *dev);
 
-__u32 ls_dbg_write_reg_internal(enum TRACEIP_MODULE module_id, __u32 offset,
-									__u64 in_val);
-
-#endif  /* DBG_REG_ACCESS_H */
+#endif /* DCSR_CORE_H */

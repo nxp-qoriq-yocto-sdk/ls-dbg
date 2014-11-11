@@ -20,8 +20,28 @@
  */
 
 #include "dcsr_epu.h"
+#include "vir_cntrs.h"
+//#include "reg_access.h"
+
+#include <linux/interrupt.h>
+#include <linux/of_platform.h>
+#include <linux/of_irq.h>
 
 /* Driver Initialization Functions */
+
+
+/*
+ * Searches the device tree for the interrupt information
+ * for the EPU and binds the interrupt handler function to
+ * the interrupt.
+ */
+#define DEBUG_LS_DBG 1
+
+
+int ls_dbg_epu_cleanup(struct dbg_device *dev)
+{	
+	return 0;
+}
 
 int dcsr_epu_ls1_init(struct dentry *parent_dentry, struct dbg_device *dev)
 {
@@ -90,13 +110,14 @@ int dcsr_epu_ls1_init(struct dentry *parent_dentry, struct dbg_device *dev)
 	}
 	/* registers numbered in decreasing order within memory */
 	for (i = 0; i < EPU_V2_NO_RESRV_REGS; ++i) {
-		sprintf(reg_name, "%s%d", "eprsv", EPU_V2_NO_RESRV_REGS-1-i);
-		DBGFS_CREATE_RW_X32(reg_name, current_dentry, &ptr->eprsv[i]);
+		sprintf(reg_name, "%s%d", "eprsrv", EPU_V2_NO_RESRV_REGS-1-i);
+		DBGFS_CREATE_RW_X32(reg_name, current_dentry, &ptr->eprsrv[i]);
 	}
 	for (i = 0; i < EPU_V2_NO_SEMA_REGS; ++i) {
 		sprintf(reg_name, "%s%d", "ephsr", EPU_V2_NO_SEMA_REGS-1-i);
 		DBGFS_CREATE_RW_X32(reg_name, current_dentry, &ptr->ephsr[i]);
 	}
 
+	
 	return 0;
 }

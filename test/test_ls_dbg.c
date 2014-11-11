@@ -29,26 +29,27 @@
 #include <errno.h>
 
 #include "reg_access_ioctl.h"
+#include "ls_dbg.h"
 
 #define DEFINE_TEST(name) int name(void)
 
 #define MODULE_NAME "ls-dbg"
 #define DEVPATH "/dev/ls-dbg"
 
-#define FAIL_IF(cond)							\
-do {									\
-	if (cond) {							\
+#define FAIL_IF(cond)	\
+do {	\
+	if (cond) {	\
 		fprintf(stderr, "Assertion failed at %s:%d\n", __FILE__, __LINE__); \
-		return 0;						\
-	}								\
+		return 0;	\
+	}	\
 } while (0)
 
-#define FAIL_UNLESS(cond)						\
-do {									\
-	if (!(cond)) {							\
+#define FAIL_UNLESS(cond)	\
+do {	\
+	if (!(cond)) {	\
 		fprintf(stderr, "Assertion failed at %s:%d\n", __FILE__, __LINE__); \
-		return 0;						\
-	}								\
+		return 0;	\
+	}	\
 } while (0)
 
 
@@ -62,6 +63,12 @@ typedef struct test {
 int dev_fd;
 
 #define CMD_SIZE 128
+
+#define EPU_COUNTER14_OFFSET	0xa38
+#define VCOUNT_VCNTCTRL_OFFSET	0x0
+#define VCOUNT_VCNTR_OFFSET(N)	(16*4 + 0x10 + (N)*4)
+#define VCOUNT_VCNTGRPRES_OFFSET 0xC
+#define VCOUNT_VCNTRES_OFFSET 0x4
 
 static int insert_module(void)
 {
@@ -103,6 +110,31 @@ static inline void init_reg_access_struct(struct reg_access *ra,
 	ra->offset = offset;
 	ra->buffer = (intptr_t)buffer;
 	ra->reg_size = reg_size;
+}
+
+static inline void init_reserve_resource_struct(struct resource_reservation *rr,
+					  enum RESOURCE_GROUP_ID res_grp_id, __u32 res_index)
+{
+	rr->resource_grp_id = res_grp_id;
+	rr->res_index = res_index;
+}
+
+static int reserve_res(int fd, enum RESOURCE_GROUP_ID res, __u32 ind)
+{
+	struct resource_reservation rr;
+	
+	init_reserve_resource_struct(&rr, res, ind);
+	
+	return ioctl(fd, DBG_RESERVE_RES, &rr);
+}
+
+static int release_res(int fd, enum RESOURCE_GROUP_ID res, __u32 ind)
+{
+	struct resource_reservation rr;
+	
+	init_reserve_resource_struct(&rr, res, ind);
+	
+	return ioctl(fd, DBG_RELINQ_RES, &rr);	
 }
 
 static int read_reg(int fd, enum TRACEIP_MODULE id, __u32 offset,
@@ -162,6 +194,88 @@ DEFINE_TEST(test_open_close)
 	return 1;
 }
 
+DEFINE_TEST(resource_res_error)
+{
+	int ret;
+
+	ret = reserve_res(dev_fd, 0x1000, 15);
+	FAIL_UNLESS(ret < 0 && errno == EINVAL);
+
+	ret = reserve_res(dev_fd, EPU0_COUNTER, 0xFF);
+	FAIL_UNLESS(ret < 0 && errno == EINVAL);
+
+	ret = release_res(dev_fd, 0x1000, 15);
+	FAIL_UNLESS(ret < 0 && errno == EINVAL);
+
+	ret = release_res(dev_fd, EPU0_COUNTER, 0xFF);
+	FAIL_UNLESS(ret < 0 && errno == EINVAL);
+
+	return 1;
+}
+
+DEFINE_TEST(resource_res_normal)
+{
+	int ret;
+	__u32 val = 0;
+	
+	ret = reserve_res(dev_fd, EPU0_COUNTER, 15);
+	FAIL_UNLESS(ret == 0 && errno == 0);
+
+	ret = reserve_res(dev_fd, EPU0_COUNTER, 31);
+	FAIL_UNLESS(ret == 0 && errno == 0);
+
+	ret = reserve_res(dev_fd, EPU0_COUNTER, 0);
+	FAIL_UNLESS(ret == 0 && errno == 0);
+
+	ret = reserve_res(dev_fd, EPU0_COUNTER, 1);
+	FAIL_UNLESS(ret == 0 && errno == 0);
+
+	ret = read_reg(dev_fd, VCOUNT, VCOUNT_VCNTRES_OFFSET, &val, 32);
+	FAIL_IF(ret < 0 || errno != 0);
+
+	FAIL_UNLESS(val == 0x80008003);
+
+	ret = release_res(dev_fd, EPU0_COUNTER, 15);
+	FAIL_UNLESS(ret == 0 && errno == 0);
+
+	ret = read_reg(dev_fd, VCOUNT, VCOUNT_VCNTRES_OFFSET, &val, 32);
+	FAIL_IF(ret < 0 || errno != 0);
+
+	FAIL_UNLESS(val == 0x80000003);
+
+	/* Try to reserve something already in use*/
+	ret = reserve_res(dev_fd, EPU0_COUNTER, 1);
+	FAIL_UNLESS(ret < 0 && errno == EBUSY);
+	errno = 0;
+	
+	ret = read_reg(dev_fd, VCOUNT, VCOUNT_VCNTRES_OFFSET, &val, 32);
+	FAIL_IF(ret < 0 || errno != 0);
+	FAIL_UNLESS(val == 0x80000003);
+
+	/* Try to relinqu something already free */
+	ret = release_res(dev_fd, EPU0_COUNTER, 5);
+	FAIL_UNLESS(ret < 0 && errno == EPERM);
+	errno = 0;
+	
+	ret = read_reg(dev_fd, VCOUNT, VCOUNT_VCNTRES_OFFSET, &val, 32);
+	FAIL_IF(ret < 0 || errno != 0);
+	FAIL_UNLESS(val == 0x80000003);
+
+	/* Free up resources */
+	ret = release_res(dev_fd, EPU0_COUNTER, 31);
+	FAIL_UNLESS(ret == 0 && errno == 0);
+	ret = release_res(dev_fd, EPU0_COUNTER, 0);
+	FAIL_UNLESS(ret == 0 && errno == 0);
+	ret = release_res(dev_fd, EPU0_COUNTER, 1);
+	FAIL_UNLESS(ret == 0 && errno == 0);
+
+	ret = read_reg(dev_fd, VCOUNT, VCOUNT_VCNTRES_OFFSET, &val, 32);
+	FAIL_IF(ret < 0 || errno != 0);
+	FAIL_UNLESS(val == 0x0);
+
+	return 1;
+}
+
 DEFINE_TEST(test_invalid_id)
 {
 	int ret;
@@ -176,6 +290,9 @@ DEFINE_TEST(test_invalid_id)
 
 	ret = read_reg(dev_fd, 1000, 0, &val, 32);
 	FAIL_UNLESS(ret == 0 && errno == EINVAL);
+
+	ret = read_reg(dev_fd, VCOUNT, 0x100000, &val, 32);
+	FAIL_UNLESS(ret == 0 && errno == EFAULT);
 
 	return 1;
 }
@@ -205,6 +322,12 @@ DEFINE_TEST(test_invalid_offset)
 	FAIL_UNLESS(ret == 0 && errno == EFAULT);
 
 	ret = read_reg(dev_fd, CSTF1, 0x100000, &val, 32);
+	FAIL_UNLESS(ret == 0 && errno == EFAULT);
+
+	ret = read_reg(dev_fd, EPU, 0x100000, &val, 32);
+	FAIL_UNLESS(ret == 0 && errno == EFAULT);
+
+	ret = read_reg(dev_fd, VCOUNT, 0x100000, &val, 32);
 	FAIL_UNLESS(ret == 0 && errno == EFAULT);
 
 	return 1;
@@ -257,6 +380,7 @@ DEFINE_TEST(test_read_write)
 	return 1;
 }
 
+
 #define ETM_DEVID_OFFSET	0xfcc
 #define ETR_DEVID_OFFSET	0xfcc
 #define ETF_DEVID_OFFSET	0xfcc
@@ -265,10 +389,15 @@ DEFINE_TEST(test_read_write)
 #define ETM_LOCKSTATUS_OFFSET	0xfb4
 #define ETM_LOCKACCESS_OFFSET	0xfb0
 
+
+#define VCOUNT_64_TEST_VAL 0xBAADF00DC5ACCE55
+#define VCOUNT_32_TEST_VAL 0xDEADCAA7
+
 DEFINE_TEST(test_simple_read)
 {
 	int ret;
 	__u32 val;
+	__u64 val64;
 
 	ret = read_reg(dev_fd, ETM0, ETM_DEVID_OFFSET, &val, 32);
 	FAIL_IF(ret < 0);
@@ -282,6 +411,34 @@ DEFINE_TEST(test_simple_read)
 	ret = read_reg(dev_fd, CSTF0, CSTF_DEVID_OFFSET, &val, 32);
 	FAIL_IF(ret < 0);
 
+	ret = read_reg(dev_fd, EPU, EPU_COUNTER14_OFFSET, &val, 32);
+	FAIL_IF(ret < 0);
+
+	ret = read_reg(dev_fd, VCOUNT, VCOUNT_VCNTCTRL_OFFSET, &val, 32);
+	FAIL_IF(ret < 0);
+
+	ret = read_reg(dev_fd, VCOUNT, VCOUNT_VCNTR_OFFSET(0), &val64, 64);
+	FAIL_IF(ret < 0);
+	
+	ret = read_reg(dev_fd, VCOUNT, VCOUNT_VCNTGRPRES_OFFSET, &val, 32);
+	FAIL_IF(ret < 0);
+
+	return 1;
+}
+
+DEFINE_TEST(test_read_write_vcount)
+{
+	int ret;
+	__u64 val64;
+
+	val64 = VCOUNT_64_TEST_VAL;
+	ret = write_reg(dev_fd, VCOUNT, VCOUNT_VCNTR_OFFSET(0), &val64, 64);
+	FAIL_IF(ret < 0);
+
+	ret = read_reg(dev_fd, VCOUNT, VCOUNT_VCNTR_OFFSET(0), &val64, 64);
+	FAIL_IF(ret < 0);
+	FAIL_IF(val64 != VCOUNT_64_TEST_VAL);
+
 	return 1;
 }
 
@@ -289,7 +446,8 @@ DEFINE_TEST(test_simple_write)
 {
 	int ret;
 	__u32 val;
-
+	__u64 val64;
+	
 	val = 0xC5ACCE55;
 	ret = write_reg(dev_fd, ETM0, ETM_LOCKACCESS_OFFSET, &val, 32);
 	FAIL_IF(ret < 0);
@@ -298,8 +456,19 @@ DEFINE_TEST(test_simple_write)
 	ret = write_reg(dev_fd, ETM0, ETM_LOCKACCESS_OFFSET, &val, 32);
 	FAIL_IF(ret < 0);
 
+	val = 0xC5ACCE55;
+	ret = write_reg(dev_fd, EPU, EPU_COUNTER14_OFFSET, &val, 32);
+	FAIL_IF(ret < 0);
+
+	val64 = VCOUNT_64_TEST_VAL;
+	ret = write_reg(dev_fd, VCOUNT, VCOUNT_VCNTR_OFFSET(0), &val64, 64);
+	FAIL_IF(ret < 0);
+	
+	val = VCOUNT_32_TEST_VAL;
+	ret = write_reg(dev_fd, VCOUNT, VCOUNT_VCNTGRPRES_OFFSET, &val, 32);
 	return 1;
 }
+
 
 static void run_tests(test_t *tests)
 {
@@ -341,6 +510,14 @@ test_t all_tests[] = {
 		.func = test_open_close,
 	},
 	{
+		.name = "Normal Resource Reservation behavior",
+		.func = resource_res_normal,
+	},
+	{
+		.name = "Invalid Resource Reservation behavior",
+		.func = resource_res_error,
+	},
+	{
 		.name = "Read invalid id",
 		.func = test_invalid_id,
 	},
@@ -361,12 +538,16 @@ test_t all_tests[] = {
 		.func = test_read_write,
 	},
 	{
+		.name = "Simple register write",
+		.func = test_simple_write,
+	},
+	{
 		.name = "Simple register read",
 		.func = test_simple_read,
 	},
 	{
-		.name = "Simple register write",
-		.func = test_simple_write,
+			.name = "Read/Write V regs",
+			.func = test_read_write_vcount,
 	},
 	{
 		.name = NULL,

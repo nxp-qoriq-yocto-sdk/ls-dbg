@@ -33,9 +33,18 @@ EXTRA_DIST = \
 	dcsr_etm.h \
 	dcsr_etr.c \
 	dcsr_etr.h \
+	dcsr_epu.c \
+	dcsr_epu.h \
+	dcsr_gdi.c \
+	dcsr_gdi.h \
+	dcsr_core.c \
+	dcsr_core.h \
 	ls_dbg.c \
 	ls_dbg.h \
 	Makefile.in \
 	reg_access.c \
 	reg_access.h \
-	reg_access_ioctl.h
+	reg_access_ioctl.h \
+	vir_cntrs.c \
+	vir_cntrs.h 
+

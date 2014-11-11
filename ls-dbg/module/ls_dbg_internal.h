@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Freescale Semiconductor, Inc.
+ * Copyright (C) 2010-2014 Freescale Semiconductor, Inc.
  * All rights reserved.
  *
  * This software may be distributed under the terms of the
@@ -18,20 +18,22 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#ifndef LS_DBG_INTERNAL_H
+#define LS_DBG_INTERNAL_H
 
-#ifndef DBG_REG_ACCESS_H
-#define DBG_REG_ACCESS_H
+#include "dbg_device.h"
+#include "dcsr_etf.h"
+#include "dcsr_etr.h"
+#include "dcsr_etm.h"
+#include "dcsr_cstf.h"
+#include "dcsr_epu.h"
+#include "dcsr_gdi.h"
+#include "dcsr_core.h"
+#include "vir_cntrs.h"
 
-#include <linux/kernel.h>
-#include "reg_access_ioctl.h"
+#define DRIVER_NAME "ls-dbg"
+#define DBGFS_ROOT_NAME "ls-dbg"
+#define DBGFS_REG_ACCESS_NAME "reg_access"
 
-int reg_access_init(void);
-int reg_add_map(enum TRACEIP_MODULE id, unsigned long addr, unsigned long size);
-void reg_access_cleanup(void);
-__u32 ls_dbg_read_reg_internal(enum TRACEIP_MODULE module_id, __u32 offset,
-									__u64 *out_val);
+#endif /* LS_DBG_INTERNAL_H */
 
-__u32 ls_dbg_write_reg_internal(enum TRACEIP_MODULE module_id, __u32 offset,
-									__u64 in_val);
-
-#endif  /* DBG_REG_ACCESS_H */

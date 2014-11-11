@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2014 Freescale Semiconductor, Inc.
+ * Copyright (C) 2014 Freescale Semiconductor, Inc.
  * All rights reserved.
  *
  * This software may be distributed under the terms of the
@@ -18,17 +18,17 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef DBG_DEBUGFS_H
-#define DBG_DEBUGFS_H
+#ifndef DCSR_GDI_H
+#define DCSR_GDI_H
 
+#include "dbg_private.h"
 #include "dbg_device.h"
-#include "dcsr_etf.h"
-#include "dcsr_etr.h"
-#include "dcsr_etm.h"
-#include "dcsr_cstf.h"
+#include "dcsr_gdi_ls1.h"
 
-#define DRIVER_NAME "ls-dbg"
-#define DBGFS_ROOT_NAME "ls-dbg"
-#define DBGFS_REG_ACCESS_NAME "reg_access"
+#define DEBUGFS_GDI_NAME "gdi"
 
-#endif /* DBG_DEBUGFS_H */
+/* Driver Initialization Functions */
+extern int dcsr_gdi_ls1_init(struct dentry *parent_dentry,
+				struct dbg_device *dev);
+
+#endif /* DCSR_GDI_H */

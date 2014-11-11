@@ -25,5 +25,7 @@ EXTRA_DIST = \
 	dcsr_etm_ls1.h \
 	dcsr_etr_ls1.h \
 	dcsr_funnel.h \
+	dcsr_epu_v2.h \
+	dcsr_gdi_ls1.h \
 	reg_access_ioctl.h
 

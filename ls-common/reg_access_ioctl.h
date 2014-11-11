@@ -24,21 +24,10 @@
 
 #include <linux/types.h>
 #include <linux/ioctl.h>
+#include "ls_dbg.h"
 
-enum TRACEIP_MODULE {
-	ETM0,
-	ETM1,
 
-	ETR,
-
-	ETF0,
-	ETF1,
-
-	CSTF0,
-	CSTF1,
-
-	NUM_IDS
-};
+#define IS_IO_MAPPED_MODULE(ID) ((ID >= ETM0) && (ID < NUM_IO_IDS))
 
 struct reg_access {
 	/* the trace module whose register will be accessed */
@@ -60,9 +49,25 @@ struct reg_access {
 	__u32 reg_size;
 } __attribute__((packed));
 
+
+struct resource_reservation {
+	/* the resource set ID */
+	enum RESOURCE_GROUP_ID resource_grp_id;
+
+	/* index within resource group that is being queried/requested */
+	__u32 res_index;
+
+} __attribute__((packed));
+
+
 /* ioctl numbers */
-#define DBG_READ_REG	_IOWR('Z', 98, struct reg_access)
-#define DBG_WRITE_REG	_IOWR('Z', 99, struct reg_access)
+#define LS_DBG_MAGIC 'Z'
+#define DBG_RESERVE_RES	_IOWR(LS_DBG_MAGIC, 96, struct resource_reservation)
+#define DBG_RELINQ_RES	_IOWR(LS_DBG_MAGIC, 97, struct resource_reservation)
+
+
+#define DBG_READ_REG	_IOWR(LS_DBG_MAGIC, 98, struct reg_access)
+#define DBG_WRITE_REG	_IOWR(LS_DBG_MAGIC, 99, struct reg_access)
 
 #define DBG_DEVICE_PATH	"/dev/ls-dbg"
 

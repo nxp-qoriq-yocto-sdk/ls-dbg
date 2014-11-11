@@ -27,9 +27,17 @@
 #include <linux/of_platform.h>
 #include <linux/io.h>
 
-#include "ls_dbg.h"
+#include "ls_dbg_internal.h"
 #include "reg_access.h"
 #include "reg_access_ioctl.h"
+
+
+// extern int ls_dbg_epu_bind_irq(struct dbg_device *dev);
+// extern int ls_dbg_epu_unbind_irq(struct dbg_device *dev);
+extern int ls_dbg_epu_init(struct dbg_device *dev);
+extern int ls_dbg_epu_cleanup(struct dbg_device *dev);
+extern int ls_dbg_epu_unbind_irq(void);
+
 
 /* platform_driver operations */
 static int dcsr_probe(struct platform_device *pdev);
@@ -69,8 +77,11 @@ static struct dbg_device *alloc_device(void)
 
 /* Allocate and add all compatible devices to the dbg_device list */
 static int add_compatible_devices(const char* compatible,
-	const char *name, enum TRACEIP_MODULE id,
-	dev_init_fn dev_init, dbgfs_init_fn dbgfs_init)
+									const char *name,
+									enum TRACEIP_MODULE id,
+									dev_init_fn dev_init, 
+									dev_remove_fn dev_remove, 
+									dbgfs_init_fn dbgfs_init)
 {
 	struct device_node *np;
 	struct dbg_device *dev;
@@ -103,6 +114,7 @@ static int add_compatible_devices(const char* compatible,
 		dev->dbgfs_dir_name = name;
 		dev->dbgfs_init_fn = dbgfs_init;
 		dev->dev_init_fn = dev_init;
+		dev->dev_remove_fn = dev_remove;
 		dev->np = np;
 		dev->dt_idx = index++;
 		list_add(&dev->list, &dbg_devs);
@@ -146,14 +158,20 @@ static int dcsr_probe(struct platform_device *pdev)
 	int ret = 0;
 
 	add_compatible_devices("fsl,ls1021a-dcsr-etf", DEBUGFS_ETF_NAME, ETF0,
-			       NULL, dcsr_etf_ls1_init);
+			       NULL, NULL, dcsr_etf_ls1_init);
 	add_compatible_devices("fsl,ls1021a-dcsr-etr", DEBUGFS_ETR_NAME, ETR,
-			       NULL, dcsr_etr_ls1_init);
+			       NULL, NULL, dcsr_etr_ls1_init);
 	add_compatible_devices("fsl,ls1021a-dcsr-etm", DEBUGFS_ETM_NAME, ETM0,
-			       NULL, dcsr_etm_ls1_init);
+			       NULL, NULL, dcsr_etm_ls1_init);
 	add_compatible_devices("fsl,ls1021a-dcsr-cstf", DEBUGFS_CSTF_NAME, CSTF0,
-			       NULL, dcsr_cstf_ls1_init);
-
+			       NULL, NULL, dcsr_cstf_ls1_init);
+	add_compatible_devices("fsl,ls1021a-dcsr-epu", DEBUGFS_EPU_NAME, EPU,
+					NULL, ls_dbg_epu_cleanup, dcsr_epu_ls1_init);
+	add_compatible_devices("fsl,ls1021a-dcsr-gdi", DEBUGFS_GDI_NAME, GDI,
+					NULL, NULL, dcsr_gdi_ls1_init);
+	add_compatible_devices("fsl,ls1021a-dcsr-a7cpu", DEBUGFS_CORE_NAME, CORE,
+					NULL, NULL, dcsr_core_ls1_init);
+	
 	/* create the root directory in debugfs */
 	dbgfs_root_dentry = debugfs_create_dir(DBGFS_ROOT_NAME, NULL);
 	if (IS_ERR_OR_NULL(dbgfs_root_dentry)) {
@@ -186,6 +204,7 @@ err:
 
 static int dcsr_remove(struct platform_device *pdev)
 {
+	ls_dbg_epu_unbind_irq();
 	debugfs_remove_recursive(dbgfs_root_dentry);
 	remove_devices();
 	reg_access_cleanup();
@@ -194,8 +213,16 @@ static int dcsr_remove(struct platform_device *pdev)
 
 static int __init dcsr_module_init(void)
 {
-	return platform_driver_register(&dcsr_driver);
+	int ret;
+
+	ret = platform_driver_register(&dcsr_driver);
+
+	if (ret)
+		return ret;
+
+	return vcounters_init(dbgfs_root_dentry);
 }
+
 module_init(dcsr_module_init);
 
 static void __exit dcsr_module_exit(void)

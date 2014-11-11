@@ -18,20 +18,32 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#ifndef DCSR_GDI_LS1_H
+#define DCSR_GDI_LS1_H
 
-#ifndef DBG_REG_ACCESS_H
-#define DBG_REG_ACCESS_H
+#include "common.h"
 
-#include <linux/kernel.h>
-#include "reg_access_ioctl.h"
+#define GDI_LS1_NO_OF_GDI_EVNTS 32
+#define GDI_LS1_NO_CMP_CNTRL_REG 8
 
-int reg_access_init(void);
-int reg_add_map(enum TRACEIP_MODULE id, unsigned long addr, unsigned long size);
-void reg_access_cleanup(void);
-__u32 ls_dbg_read_reg_internal(enum TRACEIP_MODULE module_id, __u32 offset,
-									__u64 *out_val);
+struct gdgpc_struct {
+	u32 cr;
+	u32 mr;
+	u32 vr;
+	u32 reserved;
+};
+struct gdi {
+	u32 gdcr;
+	u32 gdsr;
+	u8  reserved1[0x3F-0x07];
+	u32 gdrescr1;
+	u32 gdrescr2;
+   	u8  reserved2[0x1FF-0x47];
+	u32 gdpescr[GDI_LS1_NO_OF_GDI_EVNTS];
+	u8  reserved3[0x3FF-0x17F];
+	struct gdgpc_struct gdgpc[GDI_LS1_NO_CMP_CNTRL_REG];
+}PACKED;
+CTASSERT(sizeof(struct gdi) == 0x580);
 
-__u32 ls_dbg_write_reg_internal(enum TRACEIP_MODULE module_id, __u32 offset,
-									__u64 in_val);
 
-#endif  /* DBG_REG_ACCESS_H */
+#endif /* DCSR_GDI_LS1_H */

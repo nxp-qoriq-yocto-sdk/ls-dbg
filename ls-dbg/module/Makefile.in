@@ -35,9 +35,13 @@ $(MODULE_NAME)-objs := \
 	dcsr_etf.o \
 	dcsr_etr.o \
 	dcsr_etm.o \
-	dcsr_cstf.o
+	dcsr_cstf.o \
+	dcsr_epu.o \
+	dcsr_gdi.o \
+	dcsr_core.o \
+	vir_cntrs.o
 
-EXTRA_CFLAGS += -I$(ATSRC)/ls-common
+EXTRA_CFLAGS += -I$(ATSRC)/ls-common $(CFLAGS)
 
 else
 

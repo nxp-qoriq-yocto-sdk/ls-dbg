@@ -101,7 +101,7 @@ struct epu_v2 {
 	u32 epcapr[EPU_V2_NO_OF_COUNTERS];
 	u8 reserved19[0xF00-0xB80];
 	/* Event Processor Debug Reservation Register */
-	u32 eprsv[EPU_V2_NO_RESRV_REGS];
+	u32 eprsrv[EPU_V2_NO_RESRV_REGS];
 	/* Hardware Semaphore Register */
 	u32 ephsr[EPU_V2_NO_SEMA_REGS];
 } PACKED;

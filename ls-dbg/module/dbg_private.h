@@ -25,6 +25,16 @@
 #include <linux/types.h>
 #include <linux/debugfs.h>
 
+#ifdef DEBUG_LS_DBG
+#define NOINLINE noinline
+#define DBG_PRINT(DBG_LVL, STR, ARGS...) \
+		printk(DBG_LVL "%s      (%d): " STR, __FUNCTION__, __LINE__, ##ARGS )
+
+#else
+#define DBG_PRINT(DBG_LVL, STR, ARGS...)
+#define NOINLINE
+#endif /* DEBUG_QORIQ_PERF */
+
 /* max size of register names */
 #define DBFS_REG_NAME_LEN 16
 
@@ -47,6 +57,16 @@
 
 #define DBGFS_CREATE_WO_X32(f_name, parent_de, data) \
 		DBGFS_CREATE_X32(f_name, DBGFS_WO_MODE, parent_de, data)
+
+#define DBGFS_CREATE_X64(f_name, mode, parent_de, data) \
+		do { \
+			de = debugfs_create_x64(f_name, mode, parent_de, data); \
+			if (IS_ERR_OR_NULL(de)) \
+				return -ENOMEM; \
+		} while (0)
+
+#define DBGFS_CREATE_RW_X64(f_name, parent_de, data) \
+			DBGFS_CREATE_X64(f_name, DBGFS_RW_MODE, parent_de, data)
 
 /* Create the named directory in the parent dentry */
 #define CREATE_CURRENT_DBGFS_DIR(parent_dentry, dev, name) \
