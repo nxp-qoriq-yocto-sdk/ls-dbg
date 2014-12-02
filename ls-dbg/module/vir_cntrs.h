@@ -45,19 +45,9 @@
  * vnctrI -- 32b registers holding the OVERFLOW (only) for epctrI
  * vnctrcaptI -- 64b registers that contain the combined overflow count
  * 					(in high order 32b) and captured value (low order 32b)
- *
- * Reservation Registers
- * Set to indicate "in use"; clear to relinquish
- * 	vcntrres -- counter usage reservation register. (32b used)
- * 	vcntrevtres -- event usage reservation register; (16b used)
- * 	vcntrgrpres -- group reservation register; (4b used)
- *
+ * *
  * 	Notes:
  * 	 1. groups are defined by caller by writing to appropriate epu regs
- * 	 2. "Reservation Registers" are to facilitate cooperative sharing of the
- * 	 	counters. There is no enforcement to prevent someone from "taking"
- * 	 	counters already being used. Instead, users should check vcntrres for
- * 	 	availability.
  * 
  */
 
@@ -88,9 +78,6 @@
 
 struct vcounters {
 	u32 vcntctrl; /* vcounter control register */
-	u32 vcntrres; /* vcntr usage; must be >= EPU_V2_NO_OF_COUNTERS bits */
-	u32 vcntrevtres; /* event usage */
-	u32 vcntrgrpres; /* group usage */
 	u32 vcntrepecr[EPU_V2_NO_OF_SCU_EVENTS];
 	u64 vcntr[EPU_V2_NO_OF_COUNTERS];
 	u64 vcntrcapt[EPU_V2_NO_OF_COUNTERS];

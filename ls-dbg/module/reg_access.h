@@ -19,11 +19,17 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef DBG_REG_ACCESS_H
-#define DBG_REG_ACCESS_H
+#ifndef LS_DBG_REG_ACCESS_H
+#define LS_DBG_REG_ACCESS_H
 
 #include <linux/kernel.h>
 #include "reg_access_ioctl.h"
+
+/* EPU Reservation Register group offsets */
+#define LS_DBG_EPU_CNTR_RES_OFFSET_IND 0
+#define LS_DBG_EPU_GRP_RES_OFFSET_IND 4
+#define LS_DBG_EPU_SCU_EV_RES_OFFSET_IND 8
+#define LS_DBG_EPU_GDPESCR_RES_OFFSET_IND 32
 
 int reg_access_init(void);
 int reg_add_map(enum TRACEIP_MODULE id, unsigned long addr, unsigned long size);
@@ -34,4 +40,4 @@ __u32 ls_dbg_read_reg_internal(enum TRACEIP_MODULE module_id, __u32 offset,
 __u32 ls_dbg_write_reg_internal(enum TRACEIP_MODULE module_id, __u32 offset,
 									__u64 in_val);
 
-#endif  /* DBG_REG_ACCESS_H */
+#endif  /* LS_DBG_REG_ACCESS_H */

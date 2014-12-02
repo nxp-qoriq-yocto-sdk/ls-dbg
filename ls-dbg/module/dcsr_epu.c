@@ -37,6 +37,7 @@
  */
 #define DEBUG_LS_DBG 1
 
+struct epu_v2 *ls_dbg_epu_ptr;
 
 int ls_dbg_epu_cleanup(struct dbg_device *dev)
 {	
@@ -51,6 +52,8 @@ int dcsr_epu_ls1_init(struct dentry *parent_dentry, struct dbg_device *dev)
 	struct epu_v2 *ptr = (struct epu_v2 *)dev->mem_ptr[0];
 	char reg_name[DBFS_REG_NAME_LEN];
 
+	ls_dbg_epu_ptr = ptr;
+	
 	CREATE_CURRENT_DBGFS_DIR(parent_dentry, dev,
 								DEBUGFS_EPU_NAME);
 

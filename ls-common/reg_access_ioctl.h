@@ -57,13 +57,15 @@ struct resource_reservation {
 	/* index within resource group that is being queried/requested */
 	__u32 res_index;
 
+	__u32 res_usage;
 } __attribute__((packed));
 
 
 /* ioctl numbers */
 #define LS_DBG_MAGIC 'Z'
-#define DBG_RESERVE_RES	_IOWR(LS_DBG_MAGIC, 96, struct resource_reservation)
-#define DBG_RELINQ_RES	_IOWR(LS_DBG_MAGIC, 97, struct resource_reservation)
+#define LS_DBG_RES_GET_USAGE	_IOWR(LS_DBG_MAGIC, 95, struct resource_reservation)
+#define LS_DBG_RES_RESERVE	_IOWR(LS_DBG_MAGIC, 96, struct resource_reservation)
+#define LS_DBG_RES_RELINQ	_IOWR(LS_DBG_MAGIC, 97, struct resource_reservation)
 
 
 #define DBG_READ_REG	_IOWR(LS_DBG_MAGIC, 98, struct reg_access)

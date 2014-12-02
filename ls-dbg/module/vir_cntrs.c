@@ -564,10 +564,6 @@ int vcounters_init(struct dentry *parent_dentry)
 	 * For example &ls_dbg_vcnt.vcntrepecr
 	 */
 
-	DBGFS_CREATE_RW_X32("vcntrres", current_dentry, &ls_dbg_vcnt.vcntrres);
-	DBGFS_CREATE_RW_X32("vcntrevtres", current_dentry, &ls_dbg_vcnt.vcntrevtres);
-	DBGFS_CREATE_RW_X32("vcntrgrpres", current_dentry, &ls_dbg_vcnt.vcntrgrpres);
-
 	for (i = 0; i < EPU_V2_NO_OF_COUNTERS; ++i) {
 		sprintf(reg_name, "%s%d", "vcntr", i);
 		debugfs_create_file(reg_name, DBGFS_RW_MODE, current_dentry,

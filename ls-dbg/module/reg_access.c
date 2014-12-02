@@ -26,6 +26,7 @@
 #include <linux/slab.h>
 #include <linux/io.h>
 #include <linux/miscdevice.h>
+/* #define DEBUG_LS_DBG 1 */
 
 #include "reg_access.h"
 #include "reg_access_ioctl.h"
@@ -59,6 +60,8 @@ struct map_info {
 static struct map_info maps[MAX_TRACE_MODULES];
 
 extern struct vcounters ls_dbg_vcnt;
+extern struct epu_v2 *ls_dbg_epu_ptr;
+DEFINE_SPINLOCK(reg_acc_lock);
 
 __u32 NOINLINE ls_dbg_read_reg_internal(enum TRACEIP_MODULE module_id,
 												__u32 offset, __u64 *out_val)
@@ -214,9 +217,12 @@ static long resource_reserve(unsigned int cmd, unsigned long arg)
 	struct resource_reservation reserv;
 	struct resource_reservation __user *p;
 	__u32 val_32b;
-	__u64 prev_val;
+	__u32 val_32b_new;
+	__u32 prev_val;
 	__u64 indx_mask;
-
+	void __iomem *reg_io_addr;
+	__u32 buf_addr;
+	unsigned long flags;
 	p = (struct resource_reservation __user *) arg;
 
 	if (copy_from_user(&reserv, p, sizeof(struct resource_reservation))) {
@@ -226,137 +232,112 @@ static long resource_reserve(unsigned int cmd, unsigned long arg)
 
 	indx_mask = 1 << reserv.res_index;
 
-	switch (cmd) {
-		case DBG_RESERVE_RES: {
-
-			/* the common case is the reservation field is 32 bits,
-			 * even if not all are used. If we add a 64b reservation
-			 * field, this should be taken care of in the appro. case below */
-
-			val_32b = (__u32)indx_mask;
-
-
-			switch (reserv.resource_grp_id) {
-				case EPU0_COUNTER: {
-
-					if (reserv.res_index >= EPU_V2_NO_OF_COUNTERS) {
-						ret = -EINVAL;
-						goto reserv_out;
-					}
-
-					prev_val =
-						__sync_fetch_and_or(&ls_dbg_vcnt.vcntrres, val_32b);
-
-					break;
-				}
-				case EPU0_GROUP: {
-
-					if (reserv.res_index >= EPU_V2_NO_OF_COUNTER_GROUPS) {
-						ret = -EINVAL;
-						goto reserv_out;
-					}
-
-					prev_val =
-						__sync_fetch_and_or(&ls_dbg_vcnt.vcntrgrpres, val_32b);
-
-					break;
-				}
-				case EPU_SCU_EVENT: {
-
-					if (reserv.res_index >= EPU_V2_NO_OF_SCU_EVENTS) {
-						ret = -EINVAL;
-						goto reserv_out;
-					}
-
-					prev_val =
-						__sync_fetch_and_or(&ls_dbg_vcnt.vcntrevtres, val_32b);
-
-					break;
-				}
-				
-				default: {
-					ret = -EINVAL;
-					goto reserv_out;
-				}
+	switch (reserv.resource_grp_id) {
+		case LSDBG_RES_EPU_COUNTER: {
+			if (reserv.res_index >= EPU_V2_NO_OF_COUNTERS) {
+				ret = -EINVAL;
+				goto reserv_out;
 			}
+			reg_io_addr = &(ls_dbg_epu_ptr->
+			eprsrv[
+		    EPU_V2_NO_RESRV_REGS - 1 - LS_DBG_EPU_CNTR_RES_OFFSET_IND]);
+			break;
+		}
+		case LSDBG_RES_EPU_GROUP: {
+			if (reserv.res_index >= EPU_V2_NO_OF_COUNTER_GROUPS) {
+				ret = -EINVAL;
+				goto reserv_out;
+			}
+			reg_io_addr = &(ls_dbg_epu_ptr->
+			eprsrv[
+			EPU_V2_NO_RESRV_REGS - 1 - LS_DBG_EPU_GRP_RES_OFFSET_IND]);
+			break;
+		}
+		case LSDBG_RES_SCU_EVENT: {
+			if (reserv.res_index >= EPU_V2_NO_OF_SCU_EVENTS) {
+				ret = -EINVAL;
+				goto reserv_out;
+			}
+			reg_io_addr = &(ls_dbg_epu_ptr->
+			eprsrv[
+			EPU_V2_NO_RESRV_REGS - 1 - LS_DBG_EPU_SCU_EV_RES_OFFSET_IND]);
+			break;
+		}
+		case LSDBG_RES_GDPESCR: {
+			if (reserv.res_index >= EPU_V2_NO_OF_SCU_EVENTS) {
+				ret = -EINVAL;
+				goto reserv_out;
+			}
+			reg_io_addr = &(ls_dbg_epu_ptr->
+			eprsrv[
+	        EPU_V2_NO_RESRV_REGS - 1 - LS_DBG_EPU_GDPESCR_RES_OFFSET_IND]);
+			break;
+		}
+		default: {
+			ret = -EINVAL;
+			goto reserv_out;
+		}
+	}
 
-			/* assumes all reservation fields are 32b; if 64b field is added
-			 * take care of this below*/
+	switch (cmd) {
+		case LS_DBG_RES_RESERVE: {
+			val_32b = (__u32)indx_mask;
+			spin_lock_irqsave(&reg_acc_lock, flags);
+			prev_val = ioread32(reg_io_addr);
+
 			if (prev_val & val_32b) {
-				/* It was already set, so resource is not available and we 
-				 * should return error */
 				ret = -EBUSY;
 			}
+			else {
+				val_32b_new = prev_val | val_32b;
+				iowrite32(val_32b_new, reg_io_addr);
+			}			
+			spin_unlock_irqrestore(&reg_acc_lock, flags);
 
 			break;
 		}
 
-		case DBG_RELINQ_RES: {
+		case LS_DBG_RES_RELINQ: {
 			/* the common case is the reservation field is 32 bits,
 			 * even if not all are used. If we add a 64b reservation
 			 * field, this should be taken care of in the appro. case below */
 
 			val_32b = (__u32)indx_mask;
-			val_32b = ~val_32b;
-
-			switch (reserv.resource_grp_id) {
-				case EPU0_COUNTER: {
-
-					if (reserv.res_index >= EPU_V2_NO_OF_COUNTERS) {
-						ret = -EINVAL;
-						goto reserv_out;
-					}
-
-					prev_val =
-						__sync_fetch_and_and(&ls_dbg_vcnt.vcntrres, val_32b);
-
-					break;
-				}
-				case EPU0_GROUP: {
-
-					if (reserv.res_index >= EPU_V2_NO_OF_COUNTER_GROUPS) {
-						ret = -EINVAL;
-						goto reserv_out;
-					}
-
-					prev_val =
-						__sync_fetch_and_and(&ls_dbg_vcnt.vcntrgrpres, val_32b);
-
-					break;
-				}
-				case EPU_SCU_EVENT: {
-
-					if (reserv.res_index >= EPU_V2_NO_OF_SCU_EVENTS) {
-						ret = -EINVAL;
-						goto reserv_out;
-					}
-
-					prev_val =
-						__sync_fetch_and_and(&ls_dbg_vcnt.vcntrevtres, val_32b);
-
-					break;
-				}
-				default: {
-					ret = -EINVAL;
-					goto reserv_out;
-				}
-
-			}
-
-			/* assumes all reservation fields are 32b; if 64b field is added
-			 * take care of this below*/
-
-			val_32b = ~val_32b;
 			
+			spin_lock_irqsave(&reg_acc_lock, flags);
+			prev_val = ioread32(reg_io_addr);
+
 			if ( (prev_val & val_32b) == 0) {
 				/* It was already cleared, so we should return error */
 				ret = -EPERM;
-			}
+			}			
+			else {
+				val_32b = ~val_32b;
+				val_32b_new = prev_val & val_32b;
+				iowrite32(val_32b_new, reg_io_addr);
+			}			
+			spin_unlock_irqrestore(&reg_acc_lock, flags);
 			
 			break;
 		}
-	
+		case LS_DBG_RES_GET_USAGE: {
+			if ((__u32 *)reserv.res_usage == NULL) {
+				ret = -EINVAL;
+				break;
+			}
+			buf_addr = (__u32)reserv.res_usage;
+
+			val_32b = ioread32(reg_io_addr);
+			ret = put_user(val_32b, (__u32 *)buf_addr);
+
+			if (ret) {
+				ret = -EFAULT;
+			}
+
+			break;
+		}
 		default:
+
 			return -ENOTTY;
 	}
 

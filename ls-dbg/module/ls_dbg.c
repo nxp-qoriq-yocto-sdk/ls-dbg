@@ -50,7 +50,7 @@ static struct dentry *dbgfs_root_dentry;
 static LIST_HEAD(dbg_devs);
 
 const struct of_device_id dcsr_id_table[] = {
-		{ .compatible = "fsl,ls1021a-dcsr"},
+		{ .compatible = "fsl,dcsr"},
 		{},
 };
 MODULE_DEVICE_TABLE(of, dcsr_id_table);
