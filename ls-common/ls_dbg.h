@@ -37,11 +37,11 @@ enum TRACEIP_MODULE {
 	EPU,
 	GDI,
 	CORE,
-	NUM_IO_IDS = EPU + 1,
+	NUM_IO_IDS = CORE + 1, /* number of physical reg groups */
 	
-	VCOUNT = EPU + 1,
+	VCOUNT = NUM_IO_IDS,  /* ID of virt. regs */
 
-	NUM_IDS = VCOUNT + 1
+	NUM_IDS = VCOUNT + 1  /* number of total reg groups (virt + phy) */
 };
 
 enum RESOURCE_GROUP_ID {

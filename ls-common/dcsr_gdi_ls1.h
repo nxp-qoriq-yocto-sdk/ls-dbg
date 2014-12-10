@@ -32,18 +32,19 @@ struct gdgpc_struct {
 	u32 vr;
 	u32 reserved;
 };
+/* Note: GDI 4.0 block guide is incorrect. The following offsets match RTL. */
 struct gdi {
 	u32 gdcr;
 	u32 gdsr;
-	u8  reserved1[0x3F-0x07];
+	u8  reserved1[0xFF-0x07];
 	u32 gdrescr1;
 	u32 gdrescr2;
-   	u8  reserved2[0x1FF-0x47];
+   	u8  reserved2[0x1FF-0x107];
 	u32 gdpescr[GDI_LS1_NO_OF_GDI_EVNTS];
-	u8  reserved3[0x3FF-0x17F];
+	u8  reserved3[0x2FF-0x27F];
 	struct gdgpc_struct gdgpc[GDI_LS1_NO_CMP_CNTRL_REG];
 }PACKED;
-CTASSERT(sizeof(struct gdi) == 0x580);
+CTASSERT(sizeof(struct gdi) == 0x380);
 
 
 #endif /* DCSR_GDI_LS1_H */
